@@ -6,6 +6,9 @@ const { createNewUser, authenticateUser } = require("./controller");
 const {
   sendOTPVerificationEmail,
 } = require("../email_verification_otp/controller");
+const authenticate = require("../../middleware/auth");
+const User = require("./model");
+const { generateToken } = require("../../util/jwt");
 
 // Signup
 router.post("/signup", async (req, res) => {
@@ -62,13 +65,38 @@ router.post("/signin", async (req, res) => {
     }
 
     const authenticatedUser = await authenticateUser(email, password);
-    res.json({
+
+    // Generate JWT
+    const token = generateToken({ id: authenticatedUser[0]._id });
+
+    res.status(200).json({
       status: "SUCCESS",
       message: "You have successfully signed in!",
+      token,
       data: authenticatedUser,
     });
   } catch (error) {
-    res.json({
+    res.status(400).json({
+      status: "FAILED",
+      message: error.message,
+    });
+  }
+});
+
+router.get("/profile", authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
+      throw new Error("User not found!");
+    }
+
+    res.status(200).json({
+      status: "SUCCESS",
+      message: "User profile fetched successfully!",
+      data: user,
+    });
+  } catch (error) {
+    res.status(400).json({
       status: "FAILED",
       message: error.message,
     });
