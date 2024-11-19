@@ -1,11 +1,21 @@
 require("dotenv").config();
-const mongoose = require("mongoose");
+const { initializeApp, applicationDefault, cert } = require("firebase-admin/app");
+const { getFirestore } = require("firebase-admin/firestore");
+const path = require('path');
+const serviceAccountPath = path.resolve(process.env.CLOUD_FIRESTORE_CREDENTIAL);
 
-const uri = process.env.MONGODB_URI;
+// Load the service account key
+const serviceAccount = require(serviceAccountPath);
 
-mongoose
-  .connect(uri)
-  .then(() => console.log("Connected to MongoDB!"))
-  .catch((err) => console.error("Failed to connect to MongoDB:", err));
+// Initialize Firebase app
+const app = initializeApp({
+  credential: cert(serviceAccount),
+  databaseURL: `https://${process.env.PROJECT_ID}.firebaseio.com`,
+});
 
-module.exports = mongoose;
+// Initialize Firestore
+const db = getFirestore(app);
+
+console.log("Connected to Firestore!");
+
+module.exports = db;
