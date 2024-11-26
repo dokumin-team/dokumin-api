@@ -1,5 +1,6 @@
 require("dotenv").config();
-const { initializeApp, applicationDefault, cert } = require("firebase-admin/app");
+// const { initializeApp, applicationDefault, cert } = require("firebase-admin/app");
+const { initializeApp, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const path = require('path');
 const serviceAccountPath = path.resolve(process.env.CLOUD_FIRESTORE_CREDENTIAL);

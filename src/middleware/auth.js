@@ -19,6 +19,7 @@ const authenticate = (req, res, next) => {
     res.status(401).json({
       status: "FAILED",
       message: "Invalid or expired token!",
+      error: error.message
     });
   }
 };

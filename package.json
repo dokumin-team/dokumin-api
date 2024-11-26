@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon src/index.js",
-    "format:write": "eslint --fix ."
+    "lint": "eslint --fix ."
   },
   "keywords": [],
   "author": "",

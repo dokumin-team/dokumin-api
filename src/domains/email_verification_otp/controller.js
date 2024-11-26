@@ -1,5 +1,4 @@
-const UserOTPVerification = require("./model");
-const User = require("../user/model");
+const db = require("./model");
 const generateOTP = require("../../util/generateOTP");
 const verifyHashedData = require("../../util/verifyHashedData");
 const hashData = require("../../util/hashData");
@@ -9,79 +8,92 @@ const sendOTPVerificationEmail = async ({ _id, email }) => {
   try {
     const otp = await generateOTP();
 
-    // Mail options
+    // Email options
     const mailOptions = {
       from: process.env.AUTH_EMAIL,
       to: email,
       subject: "Verify Your Email Address",
       html: `
-                <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
-                <p>This code <b>expires in 60 minutes</b>.</p>
-                <p>Team Dokumin ❤️</p>
-              `,
+        <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
+        <p>This code <b>expires in 60 minutes</b>.</p>
+        <p>Team Dokumin ❤️</p>
+      `,
     };
 
     const hashedOTP = await hashData(otp);
-    const newOTPVerification = await new UserOTPVerification({
+    const verificationRecord = {
       userId: _id,
       otp: hashedOTP,
       createdAt: Date.now(),
       expiresAt: Date.now() + 3600000, // 1 hour
-    });
-    // Save the otp verification record
-    await newOTPVerification.save();
+    };
+
+    // Save OTP verification to Firestore
+    const verificationRef = db.collection("userOTPVerifications").doc(_id);
+    await verificationRef.set(verificationRecord);
+
+    // Send email
     await sendEmail(mailOptions);
     return {
       userId: _id,
       email,
     };
   } catch (error) {
+
+    console.log(error);
     throw error;
   }
 };
 
 const verifyOTPEmail = async (userId, otp) => {
   try {
-    // Ensure record exists
-    const matchedOTPVerificationRecords = await UserOTPVerification.find({
-      userId,
-    });
-    if (!matchedOTPVerificationRecords.length) {
-      let message =
-        "No verification record found for this account or it has already been verified. Please sign up or log in to proceed.";
-      throw Error(message);
-    } else {
-      const { expiresAt } = matchedOTPVerificationRecords[0];
-      const hashedOTP = matchedOTPVerificationRecords[0].otp;
+    const verificationRef = db.collection("userOTPVerifications").doc(userId);
+    const doc = await verificationRef.get();
 
-      // Checking for expired OTP
-      if (expiresAt < Date.now()) {
-        await UserOTPVerification.deleteOne({ userId });
-        throw Error("The OTP code has expired. Please request a new one.");
-      } else {
-        const validOTP = await verifyHashedData(otp, hashedOTP);
-        if (!validOTP) {
-          throw Error("Invalid OTP. Please check your inbox and try again.");
-        } else {
-          const verifiedUser = await User.updateOne(
-            { _id: userId },
-            { verified: true },
-          );
-          await UserOTPVerification.deleteMany({ userId });
-          return verifiedUser;
-        }
-      }
+    if (!doc.exists) {
+      throw Error("No verification record found or already verified.");
     }
+
+    const { expiresAt, otp: hashedOTP } = doc.data();
+
+    // Check expiration
+    if (expiresAt < Date.now()) {
+      await verificationRef.delete();
+      throw Error("The OTP code has expired. Please request a new one.");
+    }
+
+    // Verify OTP
+    const isValid = await verifyHashedData(otp, hashedOTP);
+    if (!isValid) {
+      throw Error("Invalid OTP. Please check your inbox and try again.");
+    }
+
+    // Mark user as verified
+    const userRef = db.collection("users").doc(userId);
+    await userRef.update({ verified: true });
+
+    // Delete OTP verification record
+    await verificationRef.delete();
+    return { message: "User verified successfully!" };
   } catch (error) {
+
+    console.log(error);
     throw error;
   }
 };
 
 const resendOTPVerificationEmail = async (userId, email) => {
-  // Delete existing records and resend
-  await UserOTPVerification.deleteMany({ userId });
-  const emailData = await sendOTPVerificationEmail({ _id: userId, email });
-  return emailData;
+  try {
+    const verificationRef = db.collection("userOTPVerifications").doc(userId);
+    await verificationRef.delete(); // Remove old records
+
+    // Send new OTP
+    const emailData = await sendOTPVerificationEmail({ _id: userId, email });
+    return emailData;
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
 };
 
 module.exports = {

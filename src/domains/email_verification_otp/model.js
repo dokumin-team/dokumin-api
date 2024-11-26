@@ -1,13 +1,4 @@
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { getFirestore } = require("firebase-admin/firestore");
+const db = getFirestore();
 
-const UserOTPVerificationSchema = new Schema({
-  userId: String,
-  otp: String,
-  createdAt: Date,
-  expiresAt: Date,
-});
-
-const User = mongoose.model("UserOTPVerification", UserOTPVerificationSchema);
-
-module.exports = User;
+module.exports = db;

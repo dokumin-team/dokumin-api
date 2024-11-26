@@ -1,5 +1,5 @@
-const PasswordResetOTP = require("./model");
-const User = require("./../user/model");
+/* eslint-disable no-useless-catch */
+const { db } = require("../../config/db");
 const hashData = require("./../../util/hashData");
 const verifyHashedData = require("./../../util/verifyHashedData");
 const sendEmail = require("./../../util/sendEmail");
@@ -7,56 +7,65 @@ const generateOTP = require("./../../util/generateOTP");
 
 const requestOTPPasswordReset = async (email) => {
   try {
-    // check if user exists with email.
-    const matchedUsers = await User.find({ email });
-    if (!matchedUsers.length) {
-      throw Error("No account with the supplied email exists!");
-    } else {
-      if (!matchedUsers[0].verified) {
-        throw Error("Email hasn't been verified yet. Check your inbox!");
-      } else {
-        // valid email, set reset email
+    // Check if the user exists
+    const userRef = db.collection("users").where("email", "==", email).limit(1);
+    const userSnapshot = await userRef.get();
 
-        const emailData = await sendOTPPasswordResetEmail(matchedUsers[0]);
-        return emailData;
-      }
+    if (userSnapshot.empty) {
+      throw new Error("No account with the supplied email exists!");
     }
+
+    const user = userSnapshot.docs[0];
+    const userData = user.data();
+
+    if (!userData.verified) {
+      throw new Error("Email hasn't been verified yet. Check your inbox!");
+    }
+
+    return await sendOTPPasswordResetEmail(user.id, userData.email);
   } catch (error) {
     throw error;
   }
 };
 
-const sendOTPPasswordResetEmail = async ({ _id, email }) => {
+const sendOTPPasswordResetEmail = async (userId, email) => {
   try {
-    const otp = await generateOTP();
-    await PasswordResetOTP.deleteMany({ userId: _id });
+    const otp = generateOTP();
+    const hashedOTP = await hashData(otp);
 
+    // Remove existing OTPs for this user
+    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId);
+    const otpSnapshot = await otpRef.get();
+
+    const batch = db.batch();
+    otpSnapshot.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+
+    // Create a new OTP record
+    const newOtpData = {
+      userId,
+      otp: hashedOTP,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 3600000), // 1 hour expiry
+    };
+
+    await db.collection("passwordResetOTPs").add(newOtpData);
+
+    // Send the OTP email
     const mailOptions = {
       from: process.env.AUTH_EMAIL,
       to: email,
       subject: "Password Reset",
-      html: `<p>Click the link below to reset your password.</p>
-      <p>Enter <b>${otp}</b> in the app to proceed with the reset process.</p>
-      <p>This code <b>expires in 60 minutes</b>. </p>
-      <p>Team Dokumin ❤️</p>`,
+      html: `
+        <p>Enter <b>${otp}</b> in the app to reset your password.</p>
+        <p>This code <b>expires in 60 minutes</b>.</p>
+        <p>Team Dokumin ❤️</p>
+      `,
     };
 
-    const hashedOTP = await hashData(otp);
-
-    // set values in password reset collection
-    const newPasswordResetOTP = new PasswordResetOTP({
-      userId: _id,
-      otp: hashedOTP,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 3600000,
-    });
-
-    await newPasswordResetOTP.save();
     await sendEmail(mailOptions);
-    return {
-      userId: _id,
-      email,
-    };
+
+    return { userId, email };
   } catch (error) {
     throw error;
   }
@@ -64,45 +73,51 @@ const sendOTPPasswordResetEmail = async ({ _id, email }) => {
 
 const resetOTPUserPassword = async (userId, otp, newPassword) => {
   try {
-    // check if user exists with email.
-    const matchedPasswordResetOTPRecords = await PasswordResetOTP.find({
-      userId,
-    });
-    if (!matchedPasswordResetOTPRecords.length) {
-      throw Error("Password reset request not found!");
-    } else {
-      const { expiresAt } = matchedPasswordResetOTPRecords[0];
-      const hashedOTP = matchedPasswordResetOTPRecords[0].otp;
+    // Get OTP record for the user
+    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId).limit(1);
+    const otpSnapshot = await otpRef.get();
 
-      if (expiresAt < Date.now()) {
-        await PasswordResetOTP.deleteOne({ userId });
-        throw Error("Code has expired. Please request again!");
-      } else {
-        const otpMatch = await verifyHashedData(otp, hashedOTP);
-        if (!otpMatch) {
-          throw Error("Invalid code passed. Check your inbox!");
-        }
-        {
-          const hashedNewPassword = await hashData(newPassword);
-          await User.updateOne(
-            { _id: userId },
-            { password: hashedNewPassword },
-          );
-          await PasswordResetOTP.deleteOne({ userId });
-          return;
-        }
-      }
+    if (otpSnapshot.empty) {
+      throw new Error("Password reset request not found!");
     }
+
+    const otpRecord = otpSnapshot.docs[0];
+    const otpData = otpRecord.data();
+
+    if (otpData.expiresAt.toDate() < new Date()) {
+      await otpRecord.ref.delete();
+      throw new Error("Code has expired. Please request again!");
+    }
+
+    const isOtpValid = await verifyHashedData(otp, otpData.otp);
+    if (!isOtpValid) {
+      throw new Error("Invalid code passed. Check your inbox!");
+    }
+
+    const hashedPassword = await hashData(newPassword);
+    const userRef = db.collection("users").doc(userId);
+
+    await userRef.update({ password: hashedPassword });
+    await otpRecord.ref.delete();
   } catch (error) {
     throw error;
   }
 };
 
 const resendOTPPasswordResetEmail = async (userId, email) => {
-  // delete existing records and resend
-  await PasswordResetOTP.deleteMany({ userId });
-  const emailData = await sendOTPPasswordResetEmail({ _id: userId, email });
-  return emailData;
+  try {
+    // Delete existing OTP records and resend
+    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId);
+    const otpSnapshot = await otpRef.get();
+
+    const batch = db.batch();
+    otpSnapshot.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+
+    return await sendOTPPasswordResetEmail(userId, email);
+  } catch (error) {
+    throw error;
+  }
 };
 
 module.exports = {

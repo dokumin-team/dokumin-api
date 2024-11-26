@@ -1,16 +1,7 @@
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { getFirestore } = require("firebase-admin/firestore");
+const db = getFirestore();
 
-const UserVerificationSchema = new Schema({
-  userId: String,
-  uniqueString: String,
-  createdAt: Date,
-  expiresAt: Date,
-});
+// Reference to User Verification collection
+const UserVerificationCollection = db.collection("userVerifications");
 
-const UserVerification = mongoose.model(
-  "UserVerification",
-  UserVerificationSchema,
-);
-
-module.exports = UserVerification;
+module.exports = UserVerificationCollection;

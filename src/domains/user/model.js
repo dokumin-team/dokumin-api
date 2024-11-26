@@ -1,14 +1,7 @@
-const mongoose = require("mongoose");
-const Schema = mongoose.Schema;
+const { getFirestore } = require("firebase-admin/firestore");
+const db = getFirestore();
 
-const UserSchema = new Schema({
-  name: String,
-  email: String,
-  password: String,
-  dateOfBirth: Date,
-  verified: Boolean,
-});
+// Reference to the users collection
+const UserCollection = db.collection("users");
 
-const User = mongoose.model("User", UserSchema);
-
-module.exports = User;
+module.exports = UserCollection;

@@ -21,6 +21,7 @@ transporter.verify((error, success) => {
 });
 
 const sendEmail = async (mailOptions) => {
+  // eslint-disable-next-line no-useless-catch
   try {
     const emailSent = await transporter.sendMail(mailOptions);
     return emailSent;
