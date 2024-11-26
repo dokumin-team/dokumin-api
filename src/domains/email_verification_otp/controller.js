@@ -39,7 +39,6 @@ const sendOTPVerificationEmail = async ({ _id, email }) => {
       email,
     };
   } catch (error) {
-
     console.log(error);
     throw error;
   }
@@ -76,7 +75,6 @@ const verifyOTPEmail = async (userId, otp) => {
     await verificationRef.delete();
     return { message: "User verified successfully!" };
   } catch (error) {
-
     console.log(error);
     throw error;
   }

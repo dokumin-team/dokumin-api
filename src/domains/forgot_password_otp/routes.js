@@ -25,7 +25,8 @@ router.post("/request", async (req, res) => {
 router.post("/reset", async (req, res) => {
   try {
     const { userId, otp, newPassword } = req.body;
-    if (!userId || !otp || !newPassword) throw new Error("All fields are required!");
+    if (!userId || !otp || !newPassword)
+      throw new Error("All fields are required!");
 
     await resetOTPUserPassword(userId, otp, newPassword);
     res.status(200).json({
@@ -40,7 +41,8 @@ router.post("/reset", async (req, res) => {
 router.post("/resend", async (req, res) => {
   try {
     const { userId, email } = req.body;
-    if (!userId || !email) throw new Error("Both userId and email are required!");
+    if (!userId || !email)
+      throw new Error("Both userId and email are required!");
 
     const emailData = await resendOTPPasswordResetEmail(userId, email);
     res.status(200).json({

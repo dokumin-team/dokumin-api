@@ -7,7 +7,11 @@ const createNewUser = async (data) => {
     const { name, email, password } = data;
 
     // Check if the user exists
-    const existingUserSnapshot = await UserCollection.where("email", "==", email).get();
+    const existingUserSnapshot = await UserCollection.where(
+      "email",
+      "==",
+      email,
+    ).get();
     if (!existingUserSnapshot.empty) {
       throw Error("User with the provided email already exists!");
     }
@@ -34,7 +38,9 @@ const createNewUser = async (data) => {
 
 const authenticateUser = async (email, password) => {
   try {
-    const userSnapshot = await UserCollection.where("email", "==", email).limit(1).get();
+    const userSnapshot = await UserCollection.where("email", "==", email)
+      .limit(1)
+      .get();
 
     if (userSnapshot.empty) {
       throw Error("Email or password is incorrect!");

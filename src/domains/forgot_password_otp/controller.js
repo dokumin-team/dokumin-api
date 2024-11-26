@@ -34,7 +34,9 @@ const sendOTPPasswordResetEmail = async (userId, email) => {
     const hashedOTP = await hashData(otp);
 
     // Remove existing OTPs for this user
-    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId);
+    const otpRef = db
+      .collection("passwordResetOTPs")
+      .where("userId", "==", userId);
     const otpSnapshot = await otpRef.get();
 
     const batch = db.batch();
@@ -74,7 +76,10 @@ const sendOTPPasswordResetEmail = async (userId, email) => {
 const resetOTPUserPassword = async (userId, otp, newPassword) => {
   try {
     // Get OTP record for the user
-    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId).limit(1);
+    const otpRef = db
+      .collection("passwordResetOTPs")
+      .where("userId", "==", userId)
+      .limit(1);
     const otpSnapshot = await otpRef.get();
 
     if (otpSnapshot.empty) {
@@ -107,7 +112,9 @@ const resetOTPUserPassword = async (userId, otp, newPassword) => {
 const resendOTPPasswordResetEmail = async (userId, email) => {
   try {
     // Delete existing OTP records and resend
-    const otpRef = db.collection("passwordResetOTPs").where("userId", "==", userId);
+    const otpRef = db
+      .collection("passwordResetOTPs")
+      .where("userId", "==", userId);
     const otpSnapshot = await otpRef.get();
 
     const batch = db.batch();

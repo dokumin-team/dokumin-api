@@ -14,7 +14,7 @@ export default [
     },
     rules: {
       // Add your custom rules here
-      "no-useless-catch": "off"
+      "no-useless-catch": "off",
     },
   },
   pluginJs.configs.recommended, // Extend recommended rules
