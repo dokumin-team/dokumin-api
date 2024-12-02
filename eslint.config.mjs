@@ -13,8 +13,9 @@ export default [
       },
     },
     rules: {
-      // Add your custom rules here
+      "no-unused-vars": "off",
       "no-useless-catch": "off",
+      "no-useless-escape": "off",
     },
   },
   pluginJs.configs.recommended, // Extend recommended rules

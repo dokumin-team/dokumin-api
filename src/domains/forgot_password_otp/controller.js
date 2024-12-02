@@ -1,9 +1,9 @@
 /* eslint-disable no-useless-catch */
-const { db } = require("../../config/db");
-const hashData = require("./../../util/hashData");
-const verifyHashedData = require("./../../util/verifyHashedData");
-const sendEmail = require("./../../util/sendEmail");
-const generateOTP = require("./../../util/generateOTP");
+const db = require("../../app");
+const hashData = require("../../utils/hashData");
+const verifyHashedData = require("../../utils/verifyHashedData");
+const sendEmail = require("../../utils/sendEmail");
+const generateOTP = require("../../utils/generateOTP");
 
 const requestOTPPasswordReset = async (email) => {
   try {
@@ -73,7 +73,7 @@ const sendOTPPasswordResetEmail = async (userId, email) => {
   }
 };
 
-const resetOTPUserPassword = async (userId, otp, newPassword) => {
+const resetUserPassword = async (userId, otp, newPassword) => {
   try {
     // Get OTP record for the user
     const otpRef = db
@@ -129,6 +129,6 @@ const resendOTPPasswordResetEmail = async (userId, email) => {
 
 module.exports = {
   requestOTPPasswordReset,
-  resetOTPUserPassword,
+  resetUserPassword,
   resendOTPPasswordResetEmail,
 };
