@@ -5,8 +5,6 @@ const documents = require('../controllers/documents');
 const catchAsync = require('../utils/catchAsync');
 const { authenticate } = require('../middleware/auth');
 
-router.route('/create').post(authenticate, catchAsync(documents.createDocument));
-
 router
     .route('/:id')
     .put(authenticate, catchAsync(documents.updateDocument))
@@ -14,6 +12,6 @@ router
     .get(authenticate, catchAsync(documents.getDocument))
 
 router.route('/documents').get(authenticate, catchAsync(documents.getDocuments));
-router.route('/search').get(authenticate, catchAsync(documents.getSearchDocument));
+router.route('/search').get(authenticate, catchAsync(documents.searchDocument));
 
 module.exports = router;

@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
 
 const ExpressError = require('./utils/expressError');
 
@@ -47,10 +47,6 @@ app.use((err, req, res) => {
     res.status(status).json({ error: true, message, stack });
 });
 
-app.listen(port, () => {
-    console.log('Server run on', port);
-});
-
 //                      FIRESTORE INITIALIZATION
 const admin = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
@@ -65,5 +61,9 @@ initializeApp({
 });
 
 // =================================================================
+
+app.listen(port, () => {
+    console.log('Server run on', port);
+});
 
 module.exports = { app, serviceAccount };

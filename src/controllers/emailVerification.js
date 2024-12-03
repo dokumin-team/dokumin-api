@@ -135,11 +135,13 @@ module.exports.resendOTPVerificationEmail = async (req, res, next) => {
         const verificationRef = db.collection("userOTPVerifications").doc(userId);
         await verificationRef.delete();
 
-        const emailData = await module.exports.sendOTPVerificationEmail({ _id: userId, email });
+        const emailData = await module.exports.sendOTPVerificationEmail({
+            body: { _id: userId, email },
+        }, res, next);
 
         res.status(200).json({
             success: true,
-            message: "OTP resent successfully.",
+            message: "Resend OTP successfully",
             data: emailData,
         });
     } catch (error) {

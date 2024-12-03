@@ -139,7 +139,7 @@ module.exports.signin = async (req, res) => {
 
 module.exports.logout = (req, res) => {
     try {
-        res.clearCookie('session');
+        res.clearCookie('token');
         res.status(200).json({
             error: false,
             message: 'Logout successful!',
