@@ -6,7 +6,6 @@ const catchAsync = require('../utils/catchAsync');
 const { authenticate } = require('../middleware/auth');
 
 router.route('/request').post(authenticate, catchAsync(forgotPassword.requestOTPPasswordReset));
-router.route('/send').post(authenticate, catchAsync(forgotPassword.sendOTPPasswordResetEmail));
 router.route('/reset').post(authenticate, catchAsync(forgotPassword.resetUserPassword));
 router.route('/resend').post(authenticate, catchAsync(forgotPassword.resendOTPPasswordReset));
 

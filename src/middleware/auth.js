@@ -1,7 +1,10 @@
 const jwt = require("jsonwebtoken");
+require('dotenv').config();
 
 module.exports.authenticate = (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1]; // Ambil token dari header
+  const token = req.headers.authorization?.split(" ")[1];
+  console.log("Token from client:", token);
+
   if (!token) {
     return res.status(401).json({
       status: "FAILED",
@@ -11,7 +14,26 @@ module.exports.authenticate = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.users = decoded; // Sisipkan data pengguna ke `req`
+    console.log("Decoded Token:", decoded);
+
+    if (!decoded || !decoded._id) {
+      return res.status(401).json({
+        status: "FAILED",
+        message: "Invalid token: Missing or invalid payload.",
+      });
+    }
+
+    req.users = { userDocId: decoded._id };
+
+    if (!req.users) {
+      return res.status(401).json({
+        status: "FAILED",
+        message: "Invalid token: Missing userDocId.",
+      });
+    }
+
+    console.log("Req Users:", req.users);
+
     next();
   } catch (error) {
     res.status(401).json({

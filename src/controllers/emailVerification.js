@@ -75,7 +75,7 @@ module.exports.verifyOTPEmail = async (req, res, next) => {
         const doc = await verificationRef.get();
 
         if (!doc.exists) {
-            throw new Error("No verification record found or already verified.");
+            throw new Error("No verification record found");
         }
 
         console.log("Verification Document Data:", doc.data());
@@ -132,6 +132,16 @@ module.exports.verifyOTPEmail = async (req, res, next) => {
 module.exports.resendOTPVerificationEmail = async (req, res, next) => {
     const { userId, email } = req.body;
     try {
+        // Checking if user already verified
+        const userRef = db.collection("users").doc(userId);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            throw new Error("User not found.");
+        }
+        if (userDoc.data().verified) {
+            return "User already verified.";
+        }
+
         const verificationRef = db.collection("userOTPVerifications").doc(userId);
         await verificationRef.delete();
 
@@ -140,7 +150,7 @@ module.exports.resendOTPVerificationEmail = async (req, res, next) => {
         }, res, next);
 
         res.status(200).json({
-            success: true,
+            status: 'success',
             message: "Resend OTP successfully",
             data: emailData,
         });

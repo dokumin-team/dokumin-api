@@ -4,6 +4,8 @@ const hashData = require("../utils/hashData");
 const { sendOTPVerificationEmail } = require('../controllers/emailVerification');
 const { generateToken } = require("../utils/jwt");
 const verifyHashedData = require("../utils/verifyHashedData");
+// const userDB = require('../userAccessDB');
+
 require("dotenv").config();
 
 const serviceAccount = require('./../../serviceaccountkey.json');
@@ -50,7 +52,8 @@ module.exports.signup = async (req, res, next) => {
         })
 
         const hashedPassword = await hashData(password);
-        const userDoc = await userCollection.doc(userRecord.uid).set({
+
+        await userCollection.doc(userRecord.uid).set({
             email: email,
             name: name,
             password: hashedPassword,
@@ -102,20 +105,23 @@ module.exports.signin = async (req, res) => {
 
         const userDoc = userSnapshot.docs[0];
         const user = { id: userDoc.id, ...userDoc.data() };
+        console.log("Full User Object::", user);
+        console.log("Document ID:", user.id);
+        console.log("User UID:", user.uid);
 
-        // Cek apakah email pengguna sudah diverifikasi
         if (!user.verified) {
             throw new Error("Email has not been verified yet. Check your inbox!");
         }
 
-        // Verifikasi kecocokan password
         const isPasswordValid = await verifyHashedData(password, user.password);
         if (!isPasswordValid) {
             throw new Error("Email or password is incorrect!");
         }
 
-        // Generate JWT
-        const token = generateToken({ id: user.id });
+        console.log("User ID for Token Generation:", user.userId);
+
+        const token = generateToken({ _id: user.id }, "1h");
+        console.log("Generated Token:", token);
 
         res.status(200).json({
             status: "SUCCESS",
@@ -154,24 +160,46 @@ module.exports.logout = (req, res) => {
 
 module.exports.getProfile = async (req, res) => {
     try {
-        // Ambil userId dari middleware authenticate
-        const userId = req.users.userId;
+        const id = req.users.userDocId;
+        console.log("Document ID for Query:", id);
 
-        // Ambil data pengguna berdasarkan ID
-        const userDoc = await db.collection("users").doc(userId).get();
+        const snapshot = await db.collection('users').get();
 
-        if (!userDoc.exists) {
-            throw new Error("User not found!");
+        if (snapshot.empty) {
+            return res.status(404).json({
+                error: true,
+                message: 'User Document not found',
+            });
         }
 
-        // Ambil data pengguna dan hapus informasi sensitif
-        const userData = userDoc.data();
-        delete userData.password;
+        let userData = null;
+        let userId = null;
+
+        snapshot.forEach((doc) => {
+            if (doc.id === id) {
+                userData = doc.data();
+                userId = doc.id;
+
+                delete userData.password;
+
+                console.log(doc.id, '=>', userData);
+            }
+        });
+
+        if (!userData) {
+            return res.status(404).json({
+                error: true,
+                message: 'User Document not found',
+            });
+        }
 
         res.status(200).json({
             status: "SUCCESS",
             message: "User profile fetched successfully!",
-            data: { id: userDoc.id, ...userData },
+            data: {
+                id: userId,
+                ...userData,
+            },
         });
     } catch (error) {
         console.error(error);
