@@ -20,6 +20,7 @@ module.exports.requestOTPPasswordReset = async (req, res, next) => {
 
         const userRef = db.collection('users').where('email', '==', email).limit(1);
         const userSnapshot = await userRef.get();
+        // console.log(userSnapshot);
 
         if (userSnapshot.empty) {
             throw new Error('No account with the supplied email exists!');
@@ -65,28 +66,35 @@ module.exports.requestOTPPasswordReset = async (req, res, next) => {
             status: 'PENDING',
             message: 'Password reset OTP email sent!',
         });
+
     } catch (error) {
         res.status(400).json({ status: 'FAILED', message: error.message });
+        next(error);
     }
 };
 
 module.exports.resetUserPassword = async (req, res, next) => {
     try {
-        const { userId, otp, newPassword } = req.body;
-        if (!userId || !otp || !newPassword) throw new Error('All fields are required!');
+        const { email, otp, newPassword } = req.body;
 
-        const otpRef = db.collection('passwordResetOTPs').where('userId', '==', userId).limit(1);
-        const otpSnapshot = await otpRef.get();
+        if (!email || !otp || !newPassword) {
+            throw new Error('All fields are required!');
+        }
 
-        if (otpSnapshot.empty) {
+        const otpRef = db.collection('forgotPasswordOTPs').doc(email);
+        const otpDoc = await otpRef.get();
+
+        if (!otpDoc.exists) {
+            console.log("No OTP found for email:", email);
             throw new Error('Password reset request not found!');
         }
 
-        const otpRecord = otpSnapshot.docs[0];
-        const otpData = otpRecord.data();
+        const otpData = otpDoc.data();
 
-        if (otpData.expiresAt.toDate() < new Date()) {
-            await otpRecord.ref.delete();
+        const currentTime = new Date();
+        if (otpData.expiresAt.toDate() < currentTime) {
+            console.log("OTP expired for email:", email);
+            await otpRef.delete(); // Hapus OTP yang sudah kedaluwarsa
             throw new Error('Code has expired. Please request again!');
         }
 
@@ -96,20 +104,43 @@ module.exports.resetUserPassword = async (req, res, next) => {
         }
 
         const hashedPassword = await hashData(newPassword);
-        const userRef = db.collection('users').doc(userId);
-        await userRef.update({ password: hashedPassword });
-        await otpRecord.ref.delete();
+
+        const userRef = db
+            .collection('users')
+            .where('email', '==', email)
+            .limit(1)
+            .get();
+
+        const userSnapshot = await userRef;
+
+        if (userSnapshot.empty) {
+            throw new Error('User not found!');
+        }
+
+        const userDoc = userSnapshot.docs[0];
+        const userId = userDoc.id;
+
+        await db.collection('users').doc(userId).update({ password: hashedPassword });
+
+        await otpRef.delete();
+
+        console.log("Password Reset Succesfully!")
 
         res.status(200).json({
             status: 'SUCCESS',
             message: 'Password has been reset successfully!',
         });
     } catch (error) {
+        console.error("Error resetting password:", error.message);
         res.status(400).json({ status: 'FAILED', message: error.message });
+        next(error);
     }
 };
 
-module.exports.resendOTPPasswordResetEmail = async (req, res, next) => {
+
+
+
+module.exports.resendOTPPasswordReset = async (req, res, next) => {
     const { email } = req.body;
     try {
         const verificationRef = db.collection('forgotPasswordOTPs').doc(email);
@@ -125,6 +156,7 @@ module.exports.resendOTPPasswordResetEmail = async (req, res, next) => {
             data: emailData,
         });
     } catch (error) {
-        res.status(400).json({ status: 'FAILED', message: error.message });
+        console.error(error);
+        next(error);
     }
 };;

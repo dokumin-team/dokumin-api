@@ -24,15 +24,14 @@ module.exports.authenticate = (req, res, next) => {
     }
 
     req.users = { userDocId: decoded._id };
+    console.log("Decoded UserId:", req.users);
 
     if (!req.users) {
       return res.status(401).json({
         status: "FAILED",
-        message: "Invalid token: Missing userDocId.",
+        message: "Invalid token: Missing userID.",
       });
     }
-
-    console.log("Req Users:", req.users);
 
     next();
   } catch (error) {

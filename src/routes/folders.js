@@ -5,7 +5,7 @@ const folders = require('../controllers/folders');
 const catchAsync = require('../utils/catchAsync');
 const { authenticate } = require('../middleware/auth');
 
-router.route('/create').post(authenticate, catchAsync(folders.createDocument));
+router.route('/:id/folder/create').post(authenticate, catchAsync(folders.createDocument));
 router.route('/folders').post(authenticate, catchAsync(folders.getFolders));
 
 router.route('/:id/folders')

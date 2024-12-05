@@ -29,7 +29,7 @@ app.use('/users', userRoutes);
 app.use('/folders', folderRoutes);
 app.use('/documents', documentRoutes);
 app.use('/userOTPVerifications', emailVerificationRoutes);
-app.use('/passwordResetOTPs', forgotPasswordRoutes);
+app.use('/forgotPasswordOTPs', forgotPasswordRoutes);
 
 app.get('/', (req, res) => {
     res.json({ msg: 'Home' });

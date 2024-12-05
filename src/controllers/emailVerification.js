@@ -13,15 +13,21 @@ const db = new Firestore({
 });
 // console.log(db);
 
-
-module.exports.sendOTPVerificationEmail = async (req, res, next) => {
+module.exports.sendOTPVerificationEmail = async (req, res) => {
+    console.log("Sending OTP Verification Email...")
+    const _id = req.users.userDocId;
+    console.log(_id);
+    if (!_id) {
+        console.log("token _id:", _id);
+        throw new Error("_id is empty");
+    }
     try {
         console.log('Request Headers:', req.headers);
         console.log('Request Body:', req.body);
 
-        const { _id, email } = req.body;
-        if (!_id || !email) {
-            return res.status(400).json({ message: "Missing required parameters: _id or email" });
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Missing required parameters: email" });
         }
 
         const otp = await generateOTP();
@@ -49,24 +55,25 @@ module.exports.sendOTPVerificationEmail = async (req, res, next) => {
         };
 
         // Save OTP verification to Firestore
-        const verificationRef = db.collection("userOTPVerifications").doc(_id);
+        const verificationRef = db.collection("userOTPVerifications").doc('_id');
         await verificationRef.set(verificationRecord);
 
         // Send email
         await sendEmail(mailOptions);
         console.log("Email sent successfully!");
-        return {
-            userId: _id,
-            email,
-        };
+
     } catch (error) {
-        console.error("Error sending OTP verification email:", error);
-        next(error);
+        console.error("Error sending OTP verification email:", error.message);
+        res.status(500).json({
+            error: true,
+            message: "An error occurred during sending OTP verification email. Please try again later.",
+        });
     }
 };
 
 module.exports.verifyOTPEmail = async (req, res, next) => {
-    const { userId, OTP: userOTP } = req.body;
+    const userId = req.users.userDocId;
+    const { OTP: userOTP } = req.body;
     try {
         console.log('Request Headers:', req.headers);
         console.log('Request Body:', req.body);
@@ -130,7 +137,8 @@ module.exports.verifyOTPEmail = async (req, res, next) => {
 };
 
 module.exports.resendOTPVerificationEmail = async (req, res, next) => {
-    const { userId, email } = req.body;
+    const userId = req.users.userDocId;
+    const { email } = req.body;
     try {
         // Checking if user already verified
         const userRef = db.collection("users").doc(userId);
@@ -145,9 +153,33 @@ module.exports.resendOTPVerificationEmail = async (req, res, next) => {
         const verificationRef = db.collection("userOTPVerifications").doc(userId);
         await verificationRef.delete();
 
-        const emailData = await module.exports.sendOTPVerificationEmail({
-            body: { _id: userId, email },
-        }, res, next);
+        console.log("Resending Email Verification...");
+        const otp = await generateOTP();
+        console.log("Generated Resend OTP:", otp)
+
+        const mailOptions = {
+            from: process.env.AUTH_EMAIL,
+            to: email,
+            subject: "Verify Your Email Address",
+            html: `
+        <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
+        <p>This code <b>expires in 60 minutes</b>.</p>
+        <p>Team Dokumin ❤️</p>
+      `,
+        };
+
+        const hashedOTP = await hashData(otp);
+
+        const verificationRecord = {
+            userId: userId,
+            otp: hashedOTP,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 3600000, // 1 hour
+        };
+
+        await verificationRef.set(verificationRecord);
+        const emailData = verificationRecord;
+        await sendEmail(mailOptions);
 
         res.status(200).json({
             status: 'success',

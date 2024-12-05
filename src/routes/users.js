@@ -7,7 +7,7 @@ const { authenticate } = require('../middleware/auth');
 
 router.route('/signup').post(catchAsync(users.signup));
 router.route('/signin').post(catchAsync(users.signin));
-router.route('/logout').post(authenticate, users.logout);
+router.route('/logout').post(catchAsync(users.logout));
 router.route('/profile').get(authenticate, catchAsync(users.getProfile));
 
 module.exports = router;

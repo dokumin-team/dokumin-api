@@ -1,10 +1,11 @@
 const admin = require('firebase-admin');
 const Firestore = require('@google-cloud/firestore');
 const hashData = require("../utils/hashData");
-const { sendOTPVerificationEmail } = require('../controllers/emailVerification');
+// const { sendOTPVerificationEmail } = require('../controllers/emailVerification');
 const { generateToken } = require("../utils/jwt");
 const verifyHashedData = require("../utils/verifyHashedData");
-// const userDB = require('../userAccessDB');
+const sendEmail = require("../utils/sendEmail");
+const generateOTP = require("../utils/generateOTP");
 
 require("dotenv").config();
 
@@ -17,7 +18,7 @@ const db = new Firestore({
 });
 // console.log(db);
 
-module.exports.signup = async (req, res, next) => {
+module.exports.signup = async (req, res) => {
     try {
         console.log('Checking Signup Request...')
 
@@ -60,24 +61,63 @@ module.exports.signup = async (req, res, next) => {
             verified: false,
             userId: userRecord.uid,
         })
-        console.log(userRecord.uid)
 
-        const emailData = await sendOTPVerificationEmail({
-            body: { _id: userRecord.uid, email }
-        });
+        const userSnapshot = await db
+            .collection('users')
+            .where("email", "==", email)
+            .limit(1)
+            .get();
+
+        if (userSnapshot.empty) {
+            throw new Error("Email is incorrect.");
+        }
+
+        const userDoc = userSnapshot.docs[0];
+        const user = { id: userDoc.id, ...userDoc.data() };
+        console.log("Full User Object:", user);
+        console.log("Document ID:", user.id);
+
+        console.log("User ID for Token Generation:", user.id)
+        const token = generateToken({ _id: user.id }, "1h");
+        console.log("Generated Token:", token);
+
+        const otp = await generateOTP();
+        console.log("Generated OTP:", otp);
+        const mailOptions = {
+            from: process.env.AUTH_EMAIL,
+            to: email,
+            subject: "Verify Your Email Address",
+            html: `
+                <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
+                <p>This code <b>expires in 60 minutes</b>.</p>
+                <p>Team Dokumin ❤️</p>
+            `,
+        };
+
+        const hashedOTP = await hashData(otp);
+
+        const verificationRecord = {
+            userId: user.id,
+            otp: hashedOTP,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 3600000, // 1 hour
+        };
+
+        const verificationRef = db.collection("userOTPVerifications").doc(user.id);
+        await verificationRef.set(verificationRecord);
+
+        await sendEmail(mailOptions);
+        console.log("Email sent successfully!");
+
         res.status(201).json({
             error: false,
             success: true,
+            token,
             message: "Registration initiated. A verification email has been sent to your email address",
-            data: emailData,
         });
+
     } catch (error) {
         console.error("Error during signup:", error.message);
-        next(error);
-        res.status(500).json({
-            error: true,
-            message: "An error occurred during signup. Please try again later.",
-        });
     }
 };
 
@@ -105,7 +145,7 @@ module.exports.signin = async (req, res) => {
 
         const userDoc = userSnapshot.docs[0];
         const user = { id: userDoc.id, ...userDoc.data() };
-        console.log("Full User Object::", user);
+        console.log("Full User Object:", user);
         console.log("Document ID:", user.id);
         console.log("User UID:", user.uid);
 
@@ -118,8 +158,7 @@ module.exports.signin = async (req, res) => {
             throw new Error("Email or password is incorrect!");
         }
 
-        console.log("User ID for Token Generation:", user.userId);
-
+        console.log("User ID for Token Generation:", user.id)
         const token = generateToken({ _id: user.id }, "1h");
         console.log("Generated Token:", token);
 
@@ -150,6 +189,8 @@ module.exports.logout = (req, res) => {
             error: false,
             message: 'Logout successful!',
         });
+
+        console.log("Logout successful");
     } catch (error) {
         res.status(500).json({
             message: 'An error occurred during logout.',
@@ -159,8 +200,8 @@ module.exports.logout = (req, res) => {
 };
 
 module.exports.getProfile = async (req, res) => {
+    const id = req.users.userDocId;
     try {
-        const id = req.users.userDocId;
         console.log("Document ID for Query:", id);
 
         const snapshot = await db.collection('users').get();
