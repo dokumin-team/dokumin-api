@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-require('dotenv').config();
+require("dotenv").config();
 
 module.exports.authenticate = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -24,20 +24,14 @@ module.exports.authenticate = (req, res, next) => {
     }
 
     req.users = { userDocId: decoded._id };
-    console.log("Decoded UserId:", req.users);
-
-    if (!req.users) {
-      return res.status(401).json({
-        status: "FAILED",
-        message: "Invalid token: Missing userID.",
-      });
-    }
+    console.log("Decoded UserId:", req.users.userDocId);
 
     next();
   } catch (error) {
+    console.error("Token verification error:", error.message);
     res.status(401).json({
       status: "FAILED",
-      message: (error, "Invalid token."),
+      message: `Invalid token: ${error.message}`,
     });
   }
 };

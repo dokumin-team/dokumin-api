@@ -26,7 +26,7 @@ app.use(cors());
 app.use(userRoutes);
 
 app.use('/users', userRoutes);
-app.use('/users/folders', folderRoutes);
+app.use('/folders', folderRoutes);
 app.use('/documents', documentRoutes);
 app.use('/userOTPVerifications', emailVerificationRoutes);
 app.use('/forgotPasswordOTPs', forgotPasswordRoutes);
