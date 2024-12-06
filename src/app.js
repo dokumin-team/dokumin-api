@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const port = process.env.PORT;
+const PORT = process.env.PORT || 8080;
 
 const ExpressError = require('./utils/expressError');
 
@@ -26,7 +26,7 @@ app.use(cors());
 app.use(userRoutes);
 
 app.use('/users', userRoutes);
-app.use('/folders', folderRoutes);
+app.use('/users/folders', folderRoutes);
 app.use('/documents', documentRoutes);
 app.use('/userOTPVerifications', emailVerificationRoutes);
 app.use('/forgotPasswordOTPs', forgotPasswordRoutes);
@@ -62,8 +62,8 @@ initializeApp({
 
 // =================================================================
 
-app.listen(port, () => {
-    console.log('Server run on', port);
+app.listen(PORT, () => {
+    console.log(`Server run on ${PORT}`);
 });
 
 module.exports = { app, serviceAccount };
