@@ -12,6 +12,7 @@ const emailVerificationRoutes = require('./routes/emailVerification');
 const forgotPasswordRoutes = require('./routes/forgotPassword');
 const folderRoutes = require('./routes/folders');
 const documentRoutes = require('./routes/documents');
+const scanRoutes = require('./routes/scanImage');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(userRoutes);
 app.use('/users', userRoutes);
 app.use('/folders', folderRoutes);
 app.use('/documents', documentRoutes);
+app.use('/model', scanRoutes);
 app.use('/userOTPVerifications', emailVerificationRoutes);
 app.use('/forgotPasswordOTPs', forgotPasswordRoutes);
 

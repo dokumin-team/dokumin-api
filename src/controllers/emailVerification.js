@@ -40,7 +40,7 @@ module.exports.sendOTPVerificationEmail = async (req, res) => {
             subject: "Verify Your Email Address",
             html: `
         <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
-        <p>This code <b>expires in 60 minutes</b>.</p>
+        <p>This code <b>expires in 15 minutes</b>.</p>
         <p>Team Dokumin ❤️</p>
       `,
         };
@@ -51,7 +51,7 @@ module.exports.sendOTPVerificationEmail = async (req, res) => {
             userId: _id,
             otp: hashedOTP,
             createdAt: Date.now(),
-            expiresAt: Date.now() + 3600000, // 1 hour
+            expiresAt: Date.now() + 900000, // 15minutes 
         };
 
         // Save OTP verification to Firestore
