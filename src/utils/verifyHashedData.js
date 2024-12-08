@@ -7,5 +7,4 @@ const verifyHashedData = async (unhashed, hashedData) => {
   return bcrypt.compare(unhashed, hashedData);
 };
 
-
 module.exports = verifyHashedData;

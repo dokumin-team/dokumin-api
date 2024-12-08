@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken");
-require('dotenv').config();
-
+require("dotenv").config();
 
 const generateToken = (payload, expiresIn) => {
   console.log("Payload for Token:", payload);

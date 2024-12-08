@@ -1,18 +1,29 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router({ mergeParams: true });
 
-const folders = require('../controllers/folders');
-const catchAsync = require('../utils/catchAsync');
-const { authenticate } = require('../middleware/auth');
-const {upload, handleMulterError } = require('../middleware/multer');
+const folders = require("../controllers/folders");
+const catchAsync = require("../utils/catchAsync");
+const { authenticate } = require("../middleware/auth");
+const { upload, handleMulterError } = require("../middleware/multer");
 
+router.route("/create").post(authenticate, catchAsync(folders.createFolder));
+router
+  .route("/getListFolder")
+  .get(authenticate, catchAsync(folders.getFolders));
 
-router.route('/create').post(authenticate, catchAsync(folders.createFolder))
-router.route('/getListFolder').get(authenticate, catchAsync(folders.getFolders));
+router.post(
+  "/:folderId/upload",
+  authenticate,
+  upload.single("file"),
+  handleMulterError,
+  catchAsync(folders.uploadDocument),
+);
 
-router.post('/:folderId/upload', authenticate, upload.single('file'), handleMulterError, catchAsync(folders.uploadDocument));
-
-router.route('/:folderId/update').put(authenticate, catchAsync(folders.updateFolder))
-router.route('/:folderId/delete').delete(authenticate, catchAsync(folders.deleteFolder));
+router
+  .route("/:folderId/update")
+  .put(authenticate, catchAsync(folders.updateFolder));
+router
+  .route("/:folderId/delete")
+  .delete(authenticate, catchAsync(folders.deleteFolder));
 
 module.exports = router;
