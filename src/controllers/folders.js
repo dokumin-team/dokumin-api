@@ -20,6 +20,19 @@ module.exports.createFolder = async (req, res, next) => {
     const userDocRef = db.collection("users").doc(userId);
     const folderRef = userDocRef.collection("folders");
 
+    // Check if folder with the same name exists
+    const existingFolderSnapshot = await folderRef
+      .where("folderName", "==", folderName)
+      .get();
+
+    if (!existingFolderSnapshot.empty) {
+      return res.status(400).json({
+        success: false,
+        message: "Folder with the same name already exists",
+      });
+    }
+
+    // Create the folder
     const folderDoc = await folderRef.add({
       folderName: folderName,
       createdAt: new Date(),
