@@ -3,7 +3,6 @@ const router = express.Router({ mergeParams: true });
 
 const forgotPassword = require("../controllers/forgotPassword");
 const catchAsync = require("../utils/catchAsync");
-// const { authenticate } = require('../middleware/auth');
 
 router
   .route("/request")

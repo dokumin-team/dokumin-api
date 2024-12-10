@@ -5,13 +5,10 @@ const verifyHashedData = require("../utils/verifyHashedData");
 const hashData = require("../utils/hashData");
 const sendEmail = require("../utils/sendEmail");
 
-// console.log(serviceAccount);
-
 const db = new Firestore({
   projectId: serviceAccount.project_id,
   keyFilename: "./serviceaccountkey.json",
 });
-// console.log(db);
 
 module.exports.requestOTPPasswordReset = async (req, res, next) => {
   try {
@@ -20,7 +17,6 @@ module.exports.requestOTPPasswordReset = async (req, res, next) => {
 
     const userRef = db.collection("users").where("email", "==", email).limit(1);
     const userSnapshot = await userRef.get();
-    // console.log(userSnapshot);
 
     if (userSnapshot.empty) {
       throw new Error("No account with the supplied email exists!");
@@ -45,7 +41,7 @@ module.exports.requestOTPPasswordReset = async (req, res, next) => {
       userId: user.id,
       otp: hashedOTP,
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 3600000), // 1 hour expiry
+      expiresAt: new Date(Date.now() + 3600000),
     };
     await verificationRef.set(newOtpData);
 
@@ -93,7 +89,7 @@ module.exports.resetUserPassword = async (req, res, next) => {
     const currentTime = new Date();
     if (otpData.expiresAt.toDate() < currentTime) {
       console.log("OTP expired for email:", email);
-      await otpRef.delete(); // Hapus OTP yang sudah kedaluwarsa
+      await otpRef.delete();
       throw new Error("Code has expired. Please request again!");
     }
 

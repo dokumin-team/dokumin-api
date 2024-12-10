@@ -1,5 +1,8 @@
 require("dotenv").config();
 
+const EventEmitter = require("events");
+EventEmitter.defaultMaxListeners = 50;
+
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -34,7 +37,7 @@ app.use("/userOTPVerifications", emailVerificationRoutes);
 app.use("/forgotPasswordOTPs", forgotPasswordRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ msg: "Home" });
+  res.json({ msg: "Port Connected" });
 });
 
 app.all("*", (req, res, next) => {
@@ -49,20 +52,17 @@ app.use((err, req, res) => {
   res.status(status).json({ error: true, message, stack });
 });
 
-//                      FIRESTORE INITIALIZATION
+// FIRESTORE INITIALIZATION
 const admin = require("firebase-admin");
 const { initializeApp } = require("firebase-admin/app");
 
 const serviceAccountPath = path.resolve(process.env.CLOUD_FIRESTORE_CREDENTIAL);
 const serviceAccount = require(serviceAccountPath);
-// console.log(serviceAccount);
 
 initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: `https://${process.env.PROJECT_ID}.firebaseio.com`,
 });
-
-// =================================================================
 
 app.listen(PORT, () => {
   console.log(`Server run on ${PORT}`);

@@ -7,9 +7,6 @@ const catchAsync = require("../utils/catchAsync");
 const { authenticate } = require("../middleware/auth");
 
 router
-  .route("/send")
-  .post(authenticate, catchAsync(verifyEmail.sendOTPVerificationEmail));
-router
   .route("/resend")
   .post(authenticate, catchAsync(verifyEmail.resendOTPVerificationEmail));
 router

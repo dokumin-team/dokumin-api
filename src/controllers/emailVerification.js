@@ -5,73 +5,11 @@ const hashData = require("../utils/hashData");
 const sendEmail = require("../utils/sendEmail");
 
 const serviceAccount = require("./../../serviceaccountkey.json");
-// console.log(serviceAccount);
 
 const db = new Firestore({
   projectId: serviceAccount.project_id,
   keyFilename: "./serviceaccountkey.json",
 });
-// console.log(db);
-
-module.exports.sendOTPVerificationEmail = async (req, res) => {
-  console.log("Sending OTP Verification Email...");
-  const _id = req.users.userDocId;
-  console.log(_id);
-  if (!_id) {
-    console.log("token _id:", _id);
-    throw new Error("_id is empty");
-  }
-  try {
-    console.log("Request Headers:", req.headers);
-    console.log("Request Body:", req.body);
-
-    const { email } = req.body;
-    if (!email) {
-      return res
-        .status(400)
-        .json({ message: "Missing required parameters: email" });
-    }
-
-    const otp = await generateOTP();
-    console.log("Generated OTP:", otp);
-
-    // Email options
-    const mailOptions = {
-      from: process.env.AUTH_EMAIL,
-      to: email,
-      subject: "Verify Your Email Address",
-      html: `
-        <p>Enter <b>${otp}</b> to complete your account setup and login.</p>
-        <p>This code <b>expires in 15 minutes</b>.</p>
-        <p>Team Dokumin ❤️</p>
-      `,
-    };
-
-    const hashedOTP = await hashData(otp);
-
-    const verificationRecord = {
-      userId: _id,
-      otp: hashedOTP,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 900000, // 15minutes
-    };
-
-    // Save OTP verification to Firestore
-    const verificationRef = db.collection("userOTPVerifications").doc("_id");
-    await verificationRef.set(verificationRecord);
-
-    // Send email
-    await sendEmail(mailOptions);
-    console.log("Email sent successfully!");
-  } catch (error) {
-    console.error("Error sending OTP verification email:", error.message);
-    res.status(500).json({
-      error: true,
-      message:
-        "An error occurred during sending OTP verification email. Please try again later.",
-    });
-  }
-};
 
 module.exports.verifyOTPEmail = async (req, res, next) => {
   const userId = req.users.userDocId;
@@ -96,7 +34,7 @@ module.exports.verifyOTPEmail = async (req, res, next) => {
 
     // Periksa apakah OTP telah kedaluwarsa
     if (expiresAt < Date.now()) {
-      await verificationRef.delete(); // Hapus data OTP kedaluwarsa
+      await verificationRef.delete();
       throw new Error("The OTP code has expired. Please request a new one.");
     }
 
@@ -176,7 +114,7 @@ module.exports.resendOTPVerificationEmail = async (req, res, next) => {
       userId: userId,
       otp: hashedOTP,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 3600000, // 1 hour
+      expiresAt: Date.now() + 3600000,
     };
 
     await verificationRef.set(verificationRecord);

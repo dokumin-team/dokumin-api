@@ -58,6 +58,8 @@ module.exports.uploadDocument = async (req, res, next) => {
   const file = req.file;
   const { originalname, mimetype, size, buffer } = file;
 
+  console.log(file);
+
   if (!file) {
     return res
       .status(400)
@@ -99,7 +101,6 @@ module.exports.uploadDocument = async (req, res, next) => {
         .json({ success: true, documentId: doc.id, url: publicUrl });
     });
 
-    // Upload the file buffer to GCP
     stream.end(buffer);
   } catch (error) {
     next(error);

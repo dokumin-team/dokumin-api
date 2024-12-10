@@ -1,7 +1,6 @@
 const admin = require("firebase-admin");
 const Firestore = require("@google-cloud/firestore");
 const hashData = require("../utils/hashData");
-// const { sendOTPVerificationEmail } = require('../controllers/emailVerification');
 const { generateToken } = require("../utils/jwt");
 const verifyHashedData = require("../utils/verifyHashedData");
 const sendEmail = require("../utils/sendEmail");
@@ -10,13 +9,11 @@ const generateOTP = require("../utils/generateOTP");
 require("dotenv").config();
 
 const serviceAccount = require("./../../serviceaccountkey.json");
-// console.log(serviceAccount);
 
 const db = new Firestore({
   projectId: serviceAccount.project_id,
   keyFilename: "./serviceaccountkey.json",
 });
-// console.log(db);
 
 module.exports.signup = async (req, res) => {
   try {

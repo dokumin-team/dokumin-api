@@ -81,10 +81,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // Maks 10 MB
 });
 
-// Middleware untuk menangkap error dari Multer
 const handleMulterError = (err, req, res, next) => {
   if (err && err.success === false) {
-    // Menampilkan kesalahan custom jika ada
     return res.status(400).json(err);
   }
   next(err);

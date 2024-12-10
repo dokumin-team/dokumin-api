@@ -1,10 +1,10 @@
 const axios = require("axios");
 const { Storage } = require("@google-cloud/storage");
-const path = require("path");
 const storage = new Storage();
 const bucketName = process.env.BUCKET_NAME;
 const Firestore = require("@google-cloud/firestore");
 const serviceAccount = require("./../../serviceaccountkey.json");
+require("dotenv").config();
 
 const db = new Firestore({
   projectId: serviceAccount.project_id,
@@ -13,51 +13,100 @@ const db = new Firestore({
 
 module.exports.scanImageToFolder = async (req, res, next) => {
   try {
-    const { file } = req.body;
     const userId = req.users.userDocId;
+    const file = req.file;
+    const { originalname, size } = file;
 
-    // Kirim ke Flask API
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded!" });
+    }
+
+    const FormData = require("form-data");
+    const formData = new FormData();
+    formData.append("file", file.buffer, originalname);
+
+    // Kirim gambar ke Flask API untuk klasifikasi
     const flaskResponse = await axios.post(
       `${process.env.FLASK_API_URL}/process-image`,
-      { file },
+      formData,
+      { headers: formData.getHeaders() },
     );
-    const { folderName, pdfData } = flaskResponse.data;
+
+    console.log("Response from Flask:", flaskResponse.data);
+
+    const { pdfData, predicted_label } = flaskResponse.data;
+
+    if (!pdfData || !predicted_label) {
+      throw new Error("Invalid response from Flask API");
+    }
 
     // Decode PDF dari base64
     const buffer = Buffer.from(pdfData, "base64");
 
-    // Path penyimpanan di GCS
-    const fileNamed = `${userId}/folders/${folderName}/${Date.now()}.pdf`;
+    // Tentukan nama folder berdasarkan hasil klasifikasi
+    const folderName = ["KTP", "KK", "SIM"].includes(predicted_label)
+      ? "Pribadi"
+      : "Lainnya";
+
+    // Periksa apakah folder dengan nama yang sama sudah ada
+    const foldersRef = db.collection(`users/${userId}/folders`);
+    const querySnapshot = await foldersRef
+      .where("folderName", "==", folderName)
+      .get();
+
+    let folderId;
+    if (querySnapshot.empty) {
+      // Folder tidak ada, buat folder baru
+      const newFolder = await foldersRef.add({
+        folderName: folderName,
+        createdAt: new Date(),
+      });
+      folderId = newFolder.id;
+    } else {
+      // Ambil ID folder yang ada
+      folderId = querySnapshot.docs[0].id;
+    }
+
+    // Tentukan path penyimpanan di GCS
+    const fileNamed = `${userId}/folders/${folderId}/${originalname}.pdf`;
     const bucket = storage.bucket(bucketName);
     const blob = bucket.file(fileNamed);
 
-    // Upload ke GCS
-    const stream = blob.createWriteStream({
-      metadata: { contentType: "application/pdf" },
-    });
-    stream.end(buffer);
-
-    stream.on("finish", async () => {
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
-
-      // Simpan metadata di Firestore
-      const folderRef = db.collection(
-        `users/${userId}/folders/${folderName}/documents`,
-      );
-      const doc = await folderRef.add({
-        fileName: path.basename(fileNamed),
-        fileType: "application/pdf",
-        url: publicUrl,
-        createdAt: new Date(),
+    // Upload file ke GCS
+    await new Promise((resolve, reject) => {
+      const stream = blob.createWriteStream({
+        metadata: { contentType: "application/pdf" },
       });
 
-      res
-        .status(201)
-        .json({ success: true, documentId: doc.id, url: publicUrl });
+      stream.on("finish", resolve);
+      stream.on("error", reject);
+
+      stream.end(buffer);
     });
 
-    stream.on("error", (err) => next(err));
+    const publicUrl = `https://storage.googleapis.com/${bucketName}/${blob.name}`;
+
+    // Simpan metadata di Firestore
+    const folderRef = db.collection(
+      `users/${userId}/folders/${folderId}/documents`,
+    );
+    const doc = await folderRef.add({
+      fileName: originalname,
+      fileType: "application/pdf",
+      fileSize: size,
+      url: publicUrl,
+      createdAt: new Date(),
+    });
+
+    res.status(201).json({
+      success: true,
+      documentId: doc.id,
+      url: publicUrl,
+      classification: predicted_label,
+      folderName: folderName,
+    });
   } catch (err) {
+    console.error("Error processing request:", err);
     next(err);
   }
 };
