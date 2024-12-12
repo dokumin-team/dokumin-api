@@ -34,7 +34,7 @@ module.exports.scanImageToFolder = async (req, res, next) => {
 
     console.log("Response from Flask:", flaskResponse.data);
 
-    const { pdfData, predicted_label } = flaskResponse.data;
+    const { pdfData, predicted_label, confidence } = flaskResponse.data;
 
     if (!pdfData || !predicted_label) {
       throw new Error("Invalid response from Flask API");
@@ -103,7 +103,8 @@ module.exports.scanImageToFolder = async (req, res, next) => {
       documentId: doc.id,
       url: publicUrl,
       classification: predicted_label,
-      folderName: folderName,
+      confidence: confidence,
+      folderName: folderName
     });
   } catch (err) {
     console.error("Error processing request:", err);
