@@ -29,7 +29,7 @@ npm run start
 
 ## API Documentation
 
-You can view the documentation postman in [here](#)
+You can view the documentation postman in [here](https://documenter.getpostman.com/view/37337961/2sAYHxnPG3)
 
 ## Contributing
 
